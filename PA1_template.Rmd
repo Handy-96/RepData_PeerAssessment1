@@ -58,7 +58,7 @@ Data1[is.na(steps), "steps"] <- Data1[, c(lapply(.SD, median, na.rm = TRUE)), .S
 ```
 ## New Dataset
 ```{r}
-data.table::fwrite(x = activityDT, file = "data/tidyData.csv", quote = FALSE)
+data.table::fwrite(x = Data1, file = "data/tidyData.csv", quote = FALSE)
 ```
 ## Histogram
 ```{r}
