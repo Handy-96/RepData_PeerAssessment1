@@ -1,0 +1,85 @@
+---
+  title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+  keep_md: true
+---
+  
+  
+  ## Loading and preprocessing the data
+  ```{r}
+library("data.table")
+library(ggplot2)
+fileUrl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+download.file(fileUrl, destfile = paste0(getwd(), '/repdata%2Fdata%2Factivity.zip'), method = "curl")
+unzip("repdata%2Fdata%2Factivity.zip",exdir = "data")
+```
+## Read CSV
+```{r}
+Data1 <- data.table::fread(input = "data/activity.csv")
+```
+
+## What is mean total number of steps taken per day?
+
+```{r}
+Total_Steps <- Data1[, c(lapply(.SD, sum, na.rm = FALSE)), .SDcols = c("steps"), by = .(date)] 
+head(Total_Steps, 10)
+```
+## Histogram
+```{r}
+ggplot(Total_Steps, aes(x = steps)) +
+  geom_histogram(fill = "blue", binwidth = 1000) +
+  labs(title = "Daily Steps", x = "Steps", y = "Frequency")
+```
+## Mean & Median
+```{r}
+Total_Steps[, .(Mean = mean(steps, na.rm = TRUE), Median = median(steps, na.rm = TRUE))]
+```
+
+## What is the average daily activity pattern?
+```{r}
+Interval_5min <- Data1[, c(lapply(.SD, mean, na.rm = TRUE)), .SDcols = c("steps"), by = .(interval)] 
+ggplot(Interval_5min, aes(x = interval , y = steps)) + geom_line(color="blue", size=1) + labs(title = "Avg. Daily Steps", x = "Interval", y = "Avg. Steps per day")
+```
+
+## 5 minute itnerval containt max numbers
+```{r}
+Data1[steps == max(steps), .(max_interval = interval)]
+```
+
+## Imputing missing values
+```{r}
+Data1[is.na(steps), .N ]
+```
+## Filling missing values
+```{r}
+Data1[is.na(steps), "steps"] <- Data1[, c(lapply(.SD, median, na.rm = TRUE)), .SDcols = c("steps")]
+```
+## New Dataset
+```{r}
+data.table::fwrite(x = activityDT, file = "data/tidyData.csv", quote = FALSE)
+```
+## Histogram
+```{r}
+Total_Steps <- Data1[, c(lapply(.SD, sum)), .SDcols = c("steps"), by = .(date)] 
+Total_Steps[, .(Mean_Steps = mean(steps), Median_Steps = median(steps))]
+ggplot(Total_Steps, aes(x = steps)) + geom_histogram(fill = "blue", binwidth = 1000) + labs(title = "Daily Steps", x = "Steps", y = "Frequency")
+```
+
+## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+Data1 <- data.table::fread(input = "data/activity.csv")
+Data1[, date := as.POSIXct(date, format = "%Y-%m-%d")]
+Data1[, `Day of Week`:= weekdays(x = date)]
+Data1[grepl(pattern = "Monday|Tuesday|Wednesday|Thursday|Friday", x = `Day of Week`), "weekday or weekend"] <- "weekday"
+Data1[grepl(pattern = "Saturday|Sunday", x = `Day of Week`), "weekday or weekend"] <- "weekend"
+Data1[, `weekday or weekend` := as.factor(`weekday or weekend`)]
+head(Data1, 10)
+```
+
+## Panel plot
+```{r}
+Data1[is.na(steps), "steps"] <- Data1[, c(lapply(.SD, median, na.rm = TRUE)), .SDcols = c("steps")]
+IntervalDT <- Data1[, c(lapply(.SD, mean, na.rm = TRUE)), .SDcols = c("steps"), by = .(interval, `weekday or weekend`)] 
+ggplot(IntervalDT , aes(x = interval , y = steps, color=`weekday or weekend`)) + geom_line() + labs(title = "Avg. Daily Steps by Weektype", x = "Interval", y = "No. of Steps") + facet_wrap(~`weekday or weekend` , ncol = 1, nrow=2)
+```
